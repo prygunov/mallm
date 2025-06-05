@@ -1,89 +1,60 @@
-# Multi-Agent LLM System with Web Research Capabilities
+# Multi-Agent LLM Experiments
 
-This project implements a multi-agent system using large language models (LLMs) with web research capabilities. The system consists of a coordinator agent that manages tasks and a web agent that performs internet research.
+This repository contains resources for experimenting with large language models in a multi-agent environment. The main notebook demonstrates using browser automation together with an LLM to research information on the web.
+
+## Contents
+
+- `metadata.jsonl` – A JSON Lines file with question and task metadata used in experiments.
+- `questions` – A text file with a couple of sample prompts.
+- `react-agent.ipynb` – Jupyter notebook showcasing an agent that uses Playwright and OpenAI models to search the web and summarize results.
+- `requirements.txt` – Python dependencies for running the notebook.
 
 ## Setup
 
-1. Clone the repository
-2. Install dependencies:
+1. Create and activate a Python virtual environment.
+2. Install required packages:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Create a `.env` file in the project root with the following variables:
-```
-OPENAI_API_KEY=your_openai_api_key
-GOOGLE_API_KEY=your_google_api_key
-GOOGLE_SEARCH_ENGINE_ID=your_google_search_engine_id
-```
+3. Install Playwright browser binaries (needed for web automation):
 
-### Getting API Keys
-
-- **OpenAI API Key**: Sign up at [OpenAI](https://platform.openai.com) and create an API key
-- **Google API Key**: 
-  1. Go to [Google Cloud Console](https://console.cloud.google.com)
-  2. Create a new project or select an existing one
-  3. Enable the Custom Search API
-  4. Create credentials (API key)
-- **Google Search Engine ID**:
-  1. Go to [Google Programmable Search Engine](https://programmablesearchengine.google.com)
-  2. Create a new search engine
-  3. Get the Search Engine ID from the setup page
-
-## Usage
-
-Run the main script:
 ```bash
-python main.py
+python -m playwright install
 ```
 
-The system will:
-1. Initialize the coordinator and web agent
-2. Process the input task
-3. Delegate research tasks to the web agent
-4. Coordinate task execution
-5. Present the results and gathered information
+4. Create a `.env` file and provide your API keys, e.g.:
 
-## Features
+```
+OPENAI_API_KEY=your_openai_key
+```
 
-- Multi-agent coordination
-- Web research capabilities using Google Custom Search
-- Flexible task delegation based on requirements
-- Structured information gathering and processing
-- Environment variable management for secure API key handling
+Additional environment variables may be necessary depending on the search service you use. Review the notebook for details.
 
-## Project Structure
+## Using the Notebook
 
-- `main.py`: Main script that initializes and coordinates the agents
-- `orchestrator.py`: Manages the coordination between different agents
-- `base_agent.py`: Contains the base agent class with common functionality
-- `web_agent.py`: Implementation of the web research agent
-- `llm_agent.py`: Implementation of the LLM-based agent for processing tasks
-- `task_planner.py`: Handles task planning and decomposition
-- `react.py`: Implements the ReAct (Reasoning and Acting) framework
-- `requirements.txt`: Project dependencies
-- `.env`: Environment variables (not tracked in git)
+Open `react-agent.ipynb` in Jupyter or VS Code and run the cells sequentially. The notebook demonstrates:
 
-## Jupyter Notebooks
+- Loading environment variables and configuring OpenAI models.
+- Launching a headless browser with Playwright.
+- Issuing search queries, scraping pages, and summarizing content with the LLM.
+- An interactive loop that allows you to respond to agent questions while it performs research.
 
-The project includes two Jupyter notebooks for development and testing:
+Feel free to modify the code or prompts to suit your own experiments.
 
-- `MALLM.ipynb`: Main development notebook containing experiments and demonstrations of the multi-agent system
-- `react.ipynb`: Notebook focused on testing and demonstrating the ReAct framework implementation
+## Working with the Dataset
 
-These notebooks are useful for interactive development and understanding the system's behavior.
+`metadata.jsonl` consists of JSON objects, one per line. Each object contains a `task_id` and a `Question` field. You can load it in Python as follows:
 
-## Search Loop Implementation
+```python
+import json
+with open("metadata.jsonl", "r") as f:
+    records = [json.loads(line) for line in f]
+```
 
-The system implements a ReAct (Reasoning and Acting) loop for web searches:
+Use this dataset to evaluate your agent or generate new prompts.
 
-1. **Initial Search**: When a task begins, the WebAgent performs a Google search using the task description
-2. **URL Processing Loop**:
-   - For each search result URL:
-     1. Extract content from the webpage
-     2. Summarize the extracted content using LLM
-     3. Store the processed URL to avoid duplicates
-   - Continue until all URLs are processed
-3. **Fact Storage**: All gathered information is stored in a central fact store for use by other agents
+---
 
-The loop ensures thorough information gathering while avoiding duplicate processing of URLs.
+This project is a minimal proof of concept for multi-agent web research with LLMs. Contributions are welcome.
