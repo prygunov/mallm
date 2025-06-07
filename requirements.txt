@@ -24,3 +24,4 @@ fake_useragent
 nest-asyncio~=1.6.0
 langchain-core~=0.3.49
 patchright~=1.52.4
+readability-lxml

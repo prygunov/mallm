@@ -1,8 +1,9 @@
 import httpx
 from bs4 import BeautifulSoup
+from readability import Document
 
 async def open_url(url: str) -> str:
-    """Fetch a URL and return plain text content using httpx."""
+    """Fetch a URL and return reader-mode plain text using httpx."""
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
             resp = await client.get(url)
@@ -13,9 +14,9 @@ async def open_url(url: str) -> str:
             resp = await client.get(url)
             resp.raise_for_status()
     html = resp.text
-    soup = BeautifulSoup(html, "lxml")
-    for tag in soup(["script", "style", "noscript", "header", "footer", "nav"]):
-        tag.decompose()
+    doc = Document(html)
+    main_html = doc.summary()
+    soup = BeautifulSoup(main_html, "lxml")
     text = soup.get_text(separator="\n")
     cleaned = "\n".join(line.strip() for line in text.splitlines() if line.strip())
     return cleaned
