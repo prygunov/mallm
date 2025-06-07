@@ -108,9 +108,8 @@ async def search_duckduckgo(query: str) -> str:
 
 # LangChain agent setup
 nest_asyncio.apply()
-rl = InMemoryRateLimiter(requests_per_second=0.3)
 if os.getenv("OPENAI_API_KEY"):
-    agent_llm = ChatOpenAI(temperature=0, model="gpt-4o-mini", rate_limiter=rl, api_key=os.environ["OPENAI_API_KEY"])
+    agent_llm = ChatOpenAI(temperature=0, model="gpt-4o-mini", api_key=os.environ["OPENAI_API_KEY"])
 else:  # pragma: no cover - optional during testing
     agent_llm = None
 
@@ -181,7 +180,7 @@ async def main(query: str = aSYNC_QUERY) -> None:
             agent_input = f"Current task: {current_task}\nFacts: {facts}"
             result = await agent_executor.ainvoke({"input": agent_input}, return_only_outputs=True)
             output = result["output"]
-            await asyncio.sleep(2.5)
+            # await asyncio.sleep(2.5)
             print("🔸 Ответ:", output, "\n")
         except Exception as e:  # pragma: no cover - runtime errors printed
             output = f"ERROR: {e}"
