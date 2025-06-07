@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from langchain import hub
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain_core.rate_limiters import InMemoryRateLimiter
-from langchain_core.tools import StructuredTool
+from langchain_core.tools import StructuredTool, tool
 from langchain_openai import ChatOpenAI
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_google_community import GoogleSearchAPIWrapper, GoogleSearchRun
@@ -21,6 +21,7 @@ from browser_use import (
     ActionResult,
 )
 from patchright.async_api import async_playwright
+from open_url import open_url
 import openai
 import nest_asyncio
 
@@ -90,7 +91,13 @@ prompt = hub.pull("hwchase17/react")
 
 search_tool = GoogleSearchRun(api_wrapper=GoogleSearchAPIWrapper())
 browser_tool = StructuredTool.from_function(name="navigate_browser", coroutine=browse)
-tools = [browser_tool, search_tool]
+
+@tool("open_url")
+async def open_url_tool(url: str) -> str:
+    """Fetch a URL and return plain text content."""
+    return await open_url(url)
+
+tools = [browser_tool, search_tool, open_url_tool]
 
 agent = create_react_agent(agent_llm, tools, prompt)
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
