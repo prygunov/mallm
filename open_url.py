@@ -18,5 +18,5 @@ async def open_url(url: str) -> str:
     main_html = doc.summary()
     soup = BeautifulSoup(main_html, "lxml")
     text = soup.get_text(separator="\n")
-    cleaned = "\n".join(line.strip() for line in text.splitlines() if line.strip())
-    return cleaned
+    # cleaned = "\n".join(line.strip() for line in text.splitlines() if line.strip())
+    return text

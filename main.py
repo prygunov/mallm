@@ -178,14 +178,14 @@ async def main(query: str = aSYNC_QUERY) -> None:
         try:
             facts = "\n".join(f"{k} - {v}" for k, v in completed)
             agent_input = f"Current task: {current_task}\nFacts: {facts}"
-            result = await agent_executor.ainvoke({"input": agent_input}, return_only_outputs=True)
+            result = await agent_executor.ainvoke({"input": agent_input})
             output = result["output"]
             # await asyncio.sleep(2.5)
             print("🔸 Ответ:", output, "\n")
+            completed.append((current_task, output))
         except Exception as e:  # pragma: no cover - runtime errors printed
-            output = f"ERROR: {e}"
             print("⚠️ Ошибка:", e, "\n")
-        completed.append((current_task, output))
+
         tasks = replan(query, completed)
         if tasks:
             print("📋 Новый план:\n" + "\n".join(f"  {i+1}. {t}" for i, t in enumerate(tasks)))
