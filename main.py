@@ -3,20 +3,19 @@ import asyncio
 import os
 import re
 import tempfile
-from typing import List, Tuple, Set
-
+from typing import List, Tuple
 from dotenv import load_dotenv
-from langchain import hub
+
 from langchain.agents import AgentExecutor, create_react_agent
-from langchain_community.chains.pebblo_retrieval.models import Prompt
-from langchain_core.prompts import PromptTemplate
-from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain_core.tools import StructuredTool
 from langchain_openai import ChatOpenAI
-from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_google_community import GoogleSearchAPIWrapper, GoogleSearchRun
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
-from open_url import open_url
+from tools.open_url import open_url
+from patchright.async_api import async_playwright
+import openai
+import nest_asyncio
+
 try:
     from browser_use import (
         Agent as BrowserAgent,
@@ -27,33 +26,23 @@ try:
     )
 except ImportError:  # pragma: no cover - optional dependency
     BrowserAgent = BrowserSession = BrowserProfile = Controller = ActionResult = None
-from patchright.async_api import async_playwright
-import openai
-import nest_asyncio
-
 
 load_dotenv()
 
-os.environ["ANONYMIZED_TELEMETRY"] = "false"
 openai.api_key = os.getenv("OPENAI_API_KEY")
-
-controller = Controller() if Controller else None
-
 if os.getenv("OPENAI_API_KEY"):
-    planner_llm = ChatOpenAI(model="o1")
-    llm = ChatOpenAI(model="gpt-4o")
+    planner_llm = ChatOpenAI(model="gpt-4o-mini")
+    llm = ChatOpenAI(model="gpt-4o-mini")
 else:  # pragma: no cover - optional during testing
     planner_llm = llm = None
 
-
+controller = Controller() if Controller else None
 if controller:
     @controller.action("Ask user for information")
     def ask_human(question: str) -> str:
         answer = input(f"\n{question}\nInput: ")
         return ActionResult(extracted_content=answer)
 
-
-COOKIES = "cf_cookies.json"
 if BrowserProfile:
     profile = BrowserProfile(
         channel="chromium",
@@ -68,7 +57,7 @@ if BrowserProfile:
         args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"],
         user_data_dir=tempfile.mkdtemp(prefix="bu_tmp_"),
         locale="ru-RU",
-        cookies_file=COOKIES,
+        cookies_file="cf_cookies.json",
     )
 else:
     profile = None
@@ -97,7 +86,6 @@ def calculate(what: str) -> str:
     except Exception as e:  # pragma: no cover - evaluation errors shown to user
         return f"Error in calculate: {e}"
 
-
 async def search_duckduckgo(query: str) -> str:
     """Return the first result link for a DuckDuckGo search."""
     wrapper = DuckDuckGoSearchAPIWrapper()
@@ -110,7 +98,7 @@ async def search_duckduckgo(query: str) -> str:
 nest_asyncio.apply()
 if os.getenv("OPENAI_API_KEY"):
     agent_llm = ChatOpenAI(temperature=0, model="gpt-4o-mini", api_key=os.environ["OPENAI_API_KEY"])
-else:  # pragma: no cover - optional during testing
+else:
     agent_llm = None
 
 from langsmith import Client
@@ -130,7 +118,7 @@ tools = [tool for tool in (browser_tool, search_tool, ddg_search_tool, open_url_
 if agent_llm:
     agent = create_react_agent(agent_llm, tools, prompt)
     agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
-else:  # pragma: no cover - optional during testing
+else:
     agent = agent_executor = None
 
 MAX_STEPS = 20
@@ -152,10 +140,8 @@ def ask_planner(prompt_text: str) -> List[str]:
     lines = response.content.splitlines()
     return [re.sub(r"^\d+[.)]\s*", "", ln).strip() for ln in lines if ln.strip()]
 
-
 def initial_plan(query: str) -> List[str]:
     return ask_planner(PLANNER_SYSTEM_MSG + f"\n\nUser request:\n{query}\n\nTasks:")
-
 
 def replan(query: str, completed: List[Tuple[str, str]]) -> List[str]:
     completed_block = "\n".join(f"- {t}: {r}" for t, r in completed) or "(none)"
@@ -164,7 +150,9 @@ def replan(query: str, completed: List[Tuple[str, str]]) -> List[str]:
 
 
 aSYNC_QUERY = """What is the last word before the second chorus of the King of Pop's fifth single from his sixth studio album?"""
-
+aSYNC_QUERY = """
+Open url https://www.azlyrics.com/lyrics/michaeljackson/humannature.html and get last word before the second chorus
+"""
 
 async def main(query: str = aSYNC_QUERY) -> None:
     print("Получено задание:", query)
@@ -188,6 +176,8 @@ async def main(query: str = aSYNC_QUERY) -> None:
 
         tasks = replan(query, completed)
         if tasks:
+            if len(tasks) == 1 and tasks[0] == "Nothing.":
+                break
             print("📋 Новый план:\n" + "\n".join(f"  {i+1}. {t}" for i, t in enumerate(tasks)))
             print()
             print("Текущие факты:" + "\n" + "\n".join(f"  {i+1}. {t} - {r}" for i, (t, r) in enumerate(completed)))
