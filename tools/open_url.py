@@ -1,5 +1,6 @@
 import httpx
 from bs4 import BeautifulSoup
+from langchain_core.tools import StructuredTool
 from readability import Document
 
 async def open_url(url: str) -> str:
@@ -20,3 +21,5 @@ async def open_url(url: str) -> str:
     text = soup.get_text(separator="\n")
     # cleaned = "\n".join(line.strip() for line in text.splitlines() if line.strip())
     return text
+
+open_url_tool = StructuredTool.from_function(name="open_url", coroutine=open_url)
