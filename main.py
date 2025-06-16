@@ -23,6 +23,7 @@ from tools.browser_use import browser_tool
 from tools.google_search import google_search_tool
 from tools.calculate_tool import calculate_tool
 from tools.string_tools import before_tool
+from tools.memory_cache import cache_write_tool, cache_read_tool
 from langchain_core.prompts import PromptTemplate
 
 if os.getenv("OPENAI_API_KEY"):
@@ -44,6 +45,8 @@ tools_to_use = (
     google_search_tool,
     #ddg_search_tool,
     open_url_tool,
+    cache_write_tool,
+    cache_read_tool,
     # before_tool
 )
 
