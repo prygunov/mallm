@@ -6,7 +6,7 @@ try:
         Controller,
         ActionResult,
     )
-except ImportError:  # pragma: no cover - optional dependency
+except ImportError:
     BrowserAgent = BrowserSession = BrowserProfile = Controller = ActionResult = None
 
 import os
