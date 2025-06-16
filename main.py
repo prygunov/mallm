@@ -2,138 +2,64 @@ from __future__ import annotations
 import asyncio
 import os
 import re
-import tempfile
+
 from typing import List, Tuple
 from dotenv import load_dotenv
+import traceback
 
 from langchain.agents import AgentExecutor, create_react_agent
-from langchain_core.tools import StructuredTool
 from langchain_openai import ChatOpenAI
-from langchain_google_community import GoogleSearchAPIWrapper, GoogleSearchRun
-from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
-from tools.open_url import open_url
-from patchright.async_api import async_playwright
 import openai
 import nest_asyncio
 
-try:
-    from browser_use import (
-        Agent as BrowserAgent,
-        BrowserSession,
-        BrowserProfile,
-        Controller,
-        ActionResult,
-    )
-except ImportError:  # pragma: no cover - optional dependency
-    BrowserAgent = BrowserSession = BrowserProfile = Controller = ActionResult = None
-
+# Init
 load_dotenv()
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
-if os.getenv("OPENAI_API_KEY"):
-    planner_llm = ChatOpenAI(model="gpt-4o-mini")
-    llm = ChatOpenAI(model="gpt-4o-mini")
-else:  # pragma: no cover - optional during testing
-    planner_llm = llm = None
-
-controller = Controller() if Controller else None
-if controller:
-    @controller.action("Ask user for information")
-    def ask_human(question: str) -> str:
-        answer = input(f"\n{question}\nInput: ")
-        return ActionResult(extracted_content=answer)
-
-if BrowserProfile:
-    profile = BrowserProfile(
-        channel="chromium",
-        keep_alive=True,
-        headless=False,
-        user_agent=(
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/136.0.0.0 Safari/537.36"
-        ),
-        ignore_default_args=["--enable-automation", "--disable-extensions"],
-        args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"],
-        user_data_dir=tempfile.mkdtemp(prefix="bu_tmp_"),
-        locale="ru-RU",
-        cookies_file="cf_cookies.json",
-    )
-else:
-    profile = None
-
-
-async def browse(task: str) -> str:
-    """Navigate to sites with a browser and perform actions."""
-    if not BrowserAgent:
-        return "browser_use not installed"
-    async with async_playwright() as pw:
-        session = BrowserSession(playwright=pw, browser_profile=profile)
-        agent = BrowserAgent(task=task, llm=llm, browser_session=session, controller=controller)
-        result = await agent.run()
-        if result.is_done():
-            return result.final_result()
-        content = ""
-        for r in result.action_results():
-            content += r.extracted_content.strip() + "\n"
-        return content
-
-
-def calculate(what: str) -> str:
-    print(f"Calculating: {what}")
-    try:
-        return str(eval(what))
-    except Exception as e:  # pragma: no cover - evaluation errors shown to user
-        return f"Error in calculate: {e}"
-
-async def search_duckduckgo(query: str) -> str:
-    """Return the first result link for a DuckDuckGo search."""
-    wrapper = DuckDuckGoSearchAPIWrapper()
-    results = wrapper.results(query, max_results=1)
-    if not results:
-        return "No results found"
-    return results[0]["link"]
-
-# LangChain agent setup
 nest_asyncio.apply()
+
+from tools.open_url import open_url_tool
+from tools.duck_search import ddg_search_tool
+from tools.ask_human import ask_human_tool
+from tools.browser_use import browser_tool
+from tools.google_search import google_search_tool
+from tools.calculate_tool import calculate_tool
+from tools.string_tools import before_tool
+from langchain_core.prompts import PromptTemplate
+
 if os.getenv("OPENAI_API_KEY"):
-    agent_llm = ChatOpenAI(temperature=0, model="gpt-4o-mini", api_key=os.environ["OPENAI_API_KEY"])
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    planner_llm = ChatOpenAI(model="gpt-4o-mini")
+    agent_llm = ChatOpenAI(model="gpt-4o")
 else:
-    agent_llm = None
+    planner_llm = agent_llm = None
 
-from langsmith import Client
-client = Client(api_key=os.getenv("LANGSMITH_API_KEY"))
-prompt = client.pull_prompt("hwchase17/react", include_model=True)
+def split_text(text: str, delimiter: str) -> List[str]:
+    """Split text by a delimiter and return a list of non-empty parts."""
+    parts = [part.strip() for part in text.split(delimiter) if part.strip()]
+    return parts
 
-try:
-    search_tool = GoogleSearchRun(api_wrapper=GoogleSearchAPIWrapper())
-except Exception:  # pragma: no cover - allow missing API key
-    search_tool = None
+tools_to_use = (
+    #ask_human_tool,
+    calculate_tool,
+    browser_tool,
+    google_search_tool,
+    #ddg_search_tool,
+    open_url_tool,
+    # before_tool
+)
 
-browser_tool = StructuredTool.from_function(name="navigate_browser", coroutine=browse)
-ddg_search_tool = StructuredTool.from_function(name="search_duckduckgo", coroutine=search_duckduckgo)
-open_url_tool = StructuredTool.from_function(name="open_url", coroutine=open_url)
-tools = [tool for tool in (browser_tool, search_tool, ddg_search_tool, open_url_tool) if tool]
+available_tools = [tool for tool in tools_to_use if tool]
 
 if agent_llm:
-    agent = create_react_agent(agent_llm, tools, prompt)
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
+    prompt = PromptTemplate.from_file("prompts/react_prompt.txt")
+    agent = create_react_agent(agent_llm, available_tools, prompt)
+    agent_executor = AgentExecutor(agent=agent, tools=available_tools, verbose=True, handle_parsing_errors=True)
 else:
     agent = agent_executor = None
 
 MAX_STEPS = 20
 
-PLANNER_SYSTEM_MSG = (
-    "You are an expert project planner. Given a user request, break it down into an ordered list of atomic tasks. "
-    "Return **only** the list, each task on a new line, numbered."
-)
-REPLAN_SYSTEM_MSG = (
-    "You are an expert project planner. The user's original request is provided below. "
-    "Some tasks have already been completed. "
-    "Given the completed tasks and their outcomes, return an ordered list of remaining atomic tasks needed to fully satisfy the request. "
-    "Do not repeat completed tasks. Return ONLY the list, each task on a new line, numbered. If nothing remains, return nothing."
-)
-
+plan_prompt = PromptTemplate.from_file("prompts/plan_prompt.txt")
+replan_prompt = PromptTemplate.from_file("prompts/replan_prompt.txt")
 
 def ask_planner(prompt_text: str) -> List[str]:
     response = planner_llm.invoke(prompt_text)
@@ -141,22 +67,25 @@ def ask_planner(prompt_text: str) -> List[str]:
     return [re.sub(r"^\d+[.)]\s*", "", ln).strip() for ln in lines if ln.strip()]
 
 def initial_plan(query: str) -> List[str]:
-    return ask_planner(PLANNER_SYSTEM_MSG + f"\n\nUser request:\n{query}\n\nTasks:")
+    return ask_planner(plan_prompt.format(input=query, tools = available_tools))
 
 def replan(query: str, completed: List[Tuple[str, str]]) -> List[str]:
     completed_block = "\n".join(f"- {t}: {r}" for t, r in completed) or "(none)"
-    prompt_text = REPLAN_SYSTEM_MSG + f"\n\nUser request:\n{query}\n\nCompleted tasks and results:\n{completed_block}\n\nRemaining tasks:"
+    prompt_text = replan_prompt.format(tools = available_tools, input = query, completed_block = completed_block)
     return ask_planner(prompt_text)
 
 
-aSYNC_QUERY = """What is the last word before the second chorus of the King of Pop's fifth single from his sixth studio album?"""
-aSYNC_QUERY = """
-Open url https://www.azlyrics.com/lyrics/michaeljackson/humannature.html and get last word before the second chorus
-"""
+query = """What is the last word before the second chorus of the King of Pop's fifth single from his sixth studio album?"""
+# query = """Open url https://www.azlyrics.com/lyrics/michaeljackson/humannature.html and get last word before the second chorus"""#  todo substring tool
+# query = "что делает management: observations: long-task-timer: enabled: false в Spring Boot 3"
 
-async def main(query: str = aSYNC_QUERY) -> None:
+# query = "Hi there"
+
+async def main(query: str = query) -> None:
     print("Получено задание:", query)
+    print("Доступные инструменты:", ", ".join(tool.name for tool in available_tools))
     tasks = initial_plan(query)
+    print("📋 Новый план:\n" + "\n".join(f"  {i + 1}. {t}" for i, t in enumerate(tasks)))
     completed: List[Tuple[str, str]] = []
     step = 0
     while tasks and step < MAX_STEPS:
@@ -170,9 +99,15 @@ async def main(query: str = aSYNC_QUERY) -> None:
             output = result["output"]
             # await asyncio.sleep(2.5)
             print("🔸 Ответ:", output, "\n")
-            completed.append((current_task, output))
-        except Exception as e:  # pragma: no cover - runtime errors printed
+            # todo handle only relevant output with llm
+
+        except Exception as e:
+            # Handle any exceptions that occur during task execution
+            print(traceback.format_exc())
+            output = f"⚠️ Ошибка: {e}"
             print("⚠️ Ошибка:", e, "\n")
+
+        completed.append((current_task, output))
 
         tasks = replan(query, completed)
         if tasks:

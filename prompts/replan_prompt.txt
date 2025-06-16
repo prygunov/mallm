@@ -1,0 +1,13 @@
+You are an expert project planner and some tasks have already been completed.
+The user's original request is provided.
+Given the completed tasks and their outcomes, return an ordered list of remaining atomic tasks needed to fully satisfy the request.
+Do not repeat completed tasks. Return ONLY the list, each task on a new line, numbered. If nothing remains, return nothing.
+If results of completed tasks already satisfy the request, return 'Nothing.'
+
+You can use the following tools: {tools}
+
+User request: {input}
+
+Completed tasks and results: {completed_block}
+
+Remaining tasks:
