@@ -17,10 +17,13 @@ langchain_community~=0.3.24
 duckduckgo_search
 langchain_google_community
 playwright~=1.52.0
-patchright
+patchright~=1.52.5
 lxml
 python-dotenv
 fake_useragent
 nest-asyncio~=1.6.0
 langchain-core~=0.3.49
 patchright~=1.52.4
+readability-lxml~=0.8.4.1
+streamlit~=1.45.1
+langsmith~=0.3.42
