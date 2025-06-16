@@ -29,7 +29,7 @@ from langchain_core.prompts import PromptTemplate
 if os.getenv("OPENAI_API_KEY"):
     openai.api_key = os.getenv("OPENAI_API_KEY")
     planner_llm = ChatOpenAI(model="gpt-4o-mini")
-    agent_llm = ChatOpenAI(model="gpt-4o")
+    agent_llm = ChatOpenAI(model="gpt-4o-mini")
 else:
     planner_llm = agent_llm = None
 

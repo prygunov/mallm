@@ -6,7 +6,7 @@ If results of completed tasks already satisfy the request, return 'Nothing.'
 
 You can use the following tools: {tools}
 
-User request: {input}
+User request: {input}. You must answer only it and all tasks should achieve the request.
 
 Completed tasks and results: {completed_block}
 
