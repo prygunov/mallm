@@ -46,6 +46,7 @@ else:
     executor = None
 
 MAX_STEPS = 20
+PARALLEL_TASKS = 2
 plan_prompt = PromptTemplate.from_file("prompts/plan_prompt.txt")
 replan_prompt = PromptTemplate.from_file("prompts/replan_prompt.txt")
 
@@ -79,14 +80,25 @@ async def plan(state: AgentState) -> AgentState:
 
 
 async def execute(state: AgentState) -> AgentState:
-    task = state["tasks"][0]
+    """Execute a batch of tasks in parallel."""
+    batch = state["tasks"][:PARALLEL_TASKS]
+    if not batch:
+        return state
+
     facts = "\n".join(f"{t} - {r}" for t, r in state["completed"])
-    agent_input = f"Current task: {task}\nFacts: {facts}"
-    result = await executor.ainvoke({"input": agent_input})
-    output = result["output"]
-    state["completed"].append((task, output))
-    state["tasks"] = state["tasks"][1:]
-    state["step"] += 1
+
+    async def run_task(task: str) -> str:
+        agent_input = f"Current task: {task}\nFacts: {facts}"
+        result = await executor.ainvoke({"input": agent_input})
+        return result["output"]
+
+    outputs = await asyncio.gather(*(run_task(t) for t in batch))
+
+    for task, output in zip(batch, outputs):
+        state["completed"].append((task, output))
+        state["step"] += 1
+
+    state["tasks"] = state["tasks"][len(batch):]
     return state
 
 
@@ -116,12 +128,15 @@ def build_graph() -> StateGraph:
 def run(query: str) -> None:
     graph = build_graph().compile()
     inputs = {"query": query}
+    seen = 0
     for output in graph.stream(inputs):
         if "tasks" in output:
             print("Tasks:", output["tasks"])
         if "completed" in output:
-            last = output["completed"][-1]
-            print(f"Step {output['step']}: {last[0]} -> {last[1]}")
+            new = output["completed"][seen:]
+            for i, (task, res) in enumerate(new, start=seen + 1):
+                print(f"Step {i}: {task} -> {res}")
+            seen += len(new)
 
 
 if __name__ == "__main__":
