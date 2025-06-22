@@ -58,3 +58,13 @@ Use this dataset to evaluate your agent or generate new prompts.
 ---
 
 This project is a minimal proof of concept for multi-agent web research with LLMs. Contributions are welcome.
+
+## CrewAI Example
+
+Run a minimal network of CrewAI agents using:
+
+```bash
+python crewai_example.py
+```
+
+The script demonstrates answering a query with planning and research steps.
