@@ -7,11 +7,17 @@ import uuid
 
 from .memory_cache import cache_text
 
+from urllib.parse import urlparse, urlunparse, quote
+
+def myquote(url):
+    parts = urlparse(url)
+    return urlunparse(parts._replace(path=quote(parts.path)))
+
 async def open_url(url: str) -> str:
     """Fetch a URL, store reader-mode text in the cache, and return the key."""
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
-            resp = await client.get(url)
+            resp = await client.get(myquote(url.strip()))
             resp.raise_for_status()
     except httpx.HTTPError:
         # Retry without SSL verification on certificate errors

@@ -14,12 +14,10 @@ async def read_cache(key: str) -> str:
 
 cache_write_tool = StructuredTool.from_function(
     name="cache_write",
-    coroutine=cache_text,
-    description="Store text in a temporary in-memory cache by key.",
+    coroutine=cache_text
 )
 
 cache_read_tool = StructuredTool.from_function(
     name="cache_read",
-    coroutine=read_cache,
-    description="Read cached text by key. Returns empty string if missing.",
+    coroutine=read_cache
 )

@@ -42,10 +42,10 @@ tools_to_use = (
     #ask_human_tool,
     calculate_tool,
     browser_tool,
-    google_search_tool,
-    #ddg_search_tool,
+    #google_search_tool,
+    ddg_search_tool,
     open_url_tool,
-    cache_write_tool,
+    #cache_write_tool,
     cache_read_tool,
     # before_tool
 )
