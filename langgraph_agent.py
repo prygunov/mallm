@@ -125,15 +125,16 @@ def build_graph() -> StateGraph:
     return graph
 
 
-def run(query: str) -> None:
+async def run(query: str) -> None:
     graph = build_graph().compile()
     inputs = {"query": query}
     seen = 0
-    for output in graph.stream(inputs):
-        if "tasks" in output:
-            print("Tasks:", output["tasks"])
-        if "completed" in output:
-            new = output["completed"][seen:]
+    async for event in graph.astream(inputs):
+        state = next(iter(event.values()))
+        if "tasks" in state:
+            print("Tasks:", state["tasks"])
+        if "completed" in state:
+            new = state["completed"][seen:]
             for i, (task, res) in enumerate(new, start=seen + 1):
                 print(f"Step {i}: {task} -> {res}")
             seen += len(new)
