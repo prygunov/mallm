@@ -4,10 +4,10 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from crewai import Agent, Task, Crew, Process
 
-from tools.open_url import open_url_tool
-from tools.google_search import google_search_tool
-from tools.browser_use import browser_tool
-from tools.calculate_tool import calculate_tool
+from tools.open_url import crew_open_url_tool
+from tools.google_search import crew_google_search_tool
+from tools.browser_use import crew_browser_tool
+from tools.calculate_tool import crew_calculate_tool
 
 load_dotenv()
 
@@ -22,11 +22,17 @@ planner = Agent(
     llm=llm_planner,
 )
 
+researcher_tools = [
+    crew_google_search_tool,
+    crew_open_url_tool,
+    crew_browser_tool,
+    crew_calculate_tool,
+]
 researcher = Agent(
     role="Researcher",
     goal="Use the available tools to complete the plan and answer the query",
     backstory="Expert web researcher able to browse pages and perform calculations",
-    tools=[google_search_tool, open_url_tool, browser_tool, calculate_tool],
+    tools=[tool for tool in researcher_tools if tool],
     allow_delegation=False,
     llm=llm_main,
 )
@@ -57,3 +63,4 @@ if __name__ == "__main__":
     )
     result = crew.kickoff(inputs={"query": query})
     print("\nFinal answer:\n", result.final_output)
+

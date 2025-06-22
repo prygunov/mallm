@@ -1,5 +1,9 @@
 
 from langchain_core.tools import StructuredTool
+try:
+    from crewai.tools.structured_tool import CrewStructuredTool
+except ImportError:
+    CrewStructuredTool = None
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 
 async def search_duckduckgo(query: str) -> str:
@@ -18,3 +22,7 @@ async def search_duckduckgo(query: str) -> str:
     return content
 
 ddg_search_tool = StructuredTool.from_function(name="search_duckduckgo", coroutine=search_duckduckgo)
+if CrewStructuredTool:
+    crew_ddg_search_tool = CrewStructuredTool.from_function(search_duckduckgo, name="search_duckduckgo")
+else:
+    crew_ddg_search_tool = None

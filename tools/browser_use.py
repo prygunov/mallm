@@ -12,6 +12,10 @@ except ImportError:
 import os
 import tempfile
 from langchain_core.tools import StructuredTool
+try:
+    from crewai.tools.structured_tool import CrewStructuredTool
+except ImportError:
+    CrewStructuredTool = None
 from patchright.async_api import async_playwright
 import openai
 from langchain_openai import ChatOpenAI
@@ -66,3 +70,8 @@ if not BrowserAgent:
     browser_tool = None
 else:
     browser_tool = StructuredTool.from_function(name="navigate_browser", coroutine=browse)
+    if CrewStructuredTool:
+        crew_browser_tool = CrewStructuredTool.from_function(browse, name="navigate_browser")
+    else:
+        crew_browser_tool = None
+

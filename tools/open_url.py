@@ -1,6 +1,10 @@
 import httpx
 from bs4 import BeautifulSoup
 from langchain_core.tools import StructuredTool
+try:
+    from crewai.tools.structured_tool import CrewStructuredTool
+except ImportError:  # crewai not installed
+    CrewStructuredTool = None
 from readability import Document
 import re
 
@@ -25,3 +29,7 @@ async def open_url(url: str) -> str:
     return result
 
 open_url_tool = StructuredTool.from_function(name="open_url", coroutine=open_url)
+if CrewStructuredTool:
+    crew_open_url_tool = CrewStructuredTool.from_function(open_url, name="open_url")
+else:
+    crew_open_url_tool = None
