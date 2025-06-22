@@ -58,3 +58,13 @@ Use this dataset to evaluate your agent or generate new prompts.
 ---
 
 This project is a minimal proof of concept for multi-agent web research with LLMs. Contributions are welcome.
+
+## LangGraph Example
+
+The `langgraph_agent.py` script shows how to run the planner with a [LangGraph](https://python.langgraph.org/) network. Provide a question as a command-line argument:
+
+```bash
+python langgraph_agent.py "What is 2 + 2?"
+```
+
+The script prints each executed step until the tasks are finished.
