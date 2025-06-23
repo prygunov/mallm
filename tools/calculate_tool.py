@@ -7,4 +7,4 @@ def calculate(what: str) -> str:
     except Exception as e:
         return f"Error in calculate: {e}"
 
-calculate_tool = StructuredTool.from_function(name="calculate_expression", coroutine=calculate)
+calculate_tool = StructuredTool.from_function(name="calculate_expression", func=calculate)

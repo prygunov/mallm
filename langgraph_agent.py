@@ -34,7 +34,9 @@ TOOLS = [
     browser_tool,
     google_search_tool,
     open_url_tool,
+    ddg_search_tool
 ]
+
 TOOLS = [t for t in TOOLS if t]
 
 # Agent for executing individual tasks
@@ -76,6 +78,7 @@ class AgentState(TypedDict, total=False):
 
 async def plan(state: AgentState) -> AgentState:
     tasks = initial_plan(state["query"])
+    print(tasks)
     return {"tasks": tasks, "completed": [], "step": 0}
 
 
@@ -108,7 +111,7 @@ def update_plan(state: AgentState) -> AgentState:
 
 
 def should_continue(state: AgentState) -> str:
-    if not state["tasks"] or state["step"] >= MAX_STEPS:
+    if state["tasks"][0] == 'Nothing.' or state["step"] >= MAX_STEPS:
         return END
     return "execute"
 
@@ -125,7 +128,7 @@ def build_graph() -> StateGraph:
     return graph
 
 
-async def run(query: str) -> None:
+async def run_query(query: str) -> str:
     graph = build_graph().compile()
     inputs = {"query": query}
     seen = 0
@@ -139,9 +142,6 @@ async def run(query: str) -> None:
                 print(f"Step {i}: {task} -> {res}")
             seen += len(new)
 
+        if state["tasks"][0] == 'Nothing.':
+            break
 
-if __name__ == "__main__":
-    import sys
-
-    q = sys.argv[1] if len(sys.argv) > 1 else "What is 2 + 2?"
-    asyncio.run(run(q))
