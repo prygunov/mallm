@@ -68,3 +68,4 @@ python langgraph_agent.py "What is 2 + 2?"
 ```
 
 The script prints each executed step until the tasks are finished.
+At the end a critic agent summarizes the results and provides the final answer.

@@ -25,8 +25,9 @@ load_dotenv()
 if os.getenv("OPENAI_API_KEY"):
     planner_llm = ChatOpenAI(model="gpt-4o-mini")
     agent_llm = ChatOpenAI(model="gpt-4o")
+    critic_llm = ChatOpenAI(model="gpt-4o-mini")
 else:
-    planner_llm = agent_llm = None
+    planner_llm = agent_llm = critic_llm = None
 
 # Tools
 TOOLS = [
@@ -34,12 +35,28 @@ TOOLS = [
     browser_tool,
     google_search_tool,
     open_url_tool,
-    ddg_search_tool
-]
+critic_prompt = PromptTemplate.from_file("prompts/critic_prompt.txt")
+    final: str
+async def critique(state: AgentState) -> AgentState:
+    completed_block = "\n".join(f"- {t}: {r}" for t, r in state["completed"]) or "(none)"
+    prompt_text = critic_prompt.format(input=state["query"], completed_block=completed_block)
+    response = await critic_llm.ainvoke(prompt_text)
+    state["final"] = response.content
+    return state
 
-TOOLS = [t for t in TOOLS if t]
 
-# Agent for executing individual tasks
+        return "end"
+    graph.add_node("critic", critique)
+    graph.add_conditional_edges("replan", should_continue, {"execute": "execute", "end": "critic"})
+    graph.add_edge("critic", END)
+
+async def run(query: str) -> str:
+    final = ""
+        if state.get("final"):
+            final = state["final"]
+    return final
+    answer = asyncio.run(run(q))
+    print("Final:", answer)
 if agent_llm:
     react_prompt = PromptTemplate.from_file("prompts/react_prompt.txt")
     react_agent = create_react_agent(agent_llm, TOOLS, react_prompt)
