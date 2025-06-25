@@ -27,3 +27,4 @@ patchright~=1.52.4
 readability-lxml~=0.8.4.1
 streamlit~=1.45.1
 langsmith~=0.3.42
+langgraph~=0.4.8
