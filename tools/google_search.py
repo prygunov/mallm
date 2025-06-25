@@ -4,7 +4,7 @@ from langchain_google_community import GoogleSearchAPIWrapper
 async def search_google(query: str) -> str:
     """Return the five results for a Google search."""
     wrapper = GoogleSearchAPIWrapper()
-    results = wrapper.results(query, num_results=5)
+    results = wrapper.results(query, num_results=10)
     if not results:
         return "No results found"
     content = ""

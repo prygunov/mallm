@@ -18,14 +18,13 @@ from tools.ask_human import ask_human_tool
 from tools.browser_use import browser_tool
 from tools.google_search import google_search_tool
 from tools.calculate_tool import calculate_tool
-from tools.string_tools import before_tool
 
 # Load env and initialize LLMs
 load_dotenv()
 
 if os.getenv("OPENAI_API_KEY"):
     planner_llm = ChatOpenAI(model="gpt-4o-mini")
-    agent_llm = ChatOpenAI(model="gpt-4o-mini")
+    agent_llm = ChatOpenAI(model="gpt-4o")
     critic_llm = ChatOpenAI(model="gpt-4o-mini")
 else:
     planner_llm = agent_llm = critic_llm = None
@@ -48,29 +47,26 @@ else:
     executor = None
 
 MAX_STEPS = 20
-PARALLEL_TASKS = 2
+PARALLEL_TASKS = 1
 plan_prompt = PromptTemplate.from_file("prompts/plan_prompt.txt")
 replan_prompt = PromptTemplate.from_file("prompts/replan_prompt.txt")
 critic_prompt = PromptTemplate.from_file("prompts/critic_prompt.txt")
-
 
 def ask_planner(prompt_text: str) -> List[str]:
     response = planner_llm.invoke(prompt_text)
     lines = response.content.splitlines()
     return [re.sub(r"^\d+[.)]\s*", "", ln).strip() for ln in lines if ln.strip()]
 
-
 def initial_plan(query: str) -> List[str]:
     return ask_planner(plan_prompt.format(input=query, tools=TOOLS))
 
-
 def replan(query: str, completed: List[Tuple[str, str]]) -> List[str]:
+    print("replannig...")
     completed_block = "\n".join(f"- {t}: {r}" for t, r in completed) or "(none)"
     prompt_text = replan_prompt.format(
         tools=TOOLS,
         input=query,
         completed_block=completed_block,
-
     )
     return ask_planner(prompt_text)
 
@@ -118,11 +114,9 @@ async def execute(state: AgentState) -> AgentState:
     state["tasks"] = state["tasks"][len(batch):]
     return state
 
-
 def update_plan(state: AgentState) -> AgentState:
     state["tasks"] = replan(state["query"], state["completed"])
     return state
-
 
 async def critique(state: AgentState) -> AgentState:
     completed_block = "\n".join(f"- {t}: {r}" for t, r in state["completed"]) or "(none)"
@@ -140,21 +134,17 @@ def should_continue(state: AgentState) -> str:
 
 
 def build_graph() -> StateGraph:
-    graph = StateGraph(AgentState)
-    graph.add_node("plan", plan)
-    graph.set_entry_point("plan")
-
-    graph.add_node("execute", execute)
-    graph.add_node("replan", update_plan)
-    graph.add_node("critic", critique)
-
-    graph.add_edge("plan", "execute")
-    graph.add_edge("execute", "replan")
-    graph.add_conditional_edges("replan", should_continue, {"execute": "execute", "end": "critic"})
-    graph.add_edge("critic", END)
-
-    return graph
-
+    return (StateGraph(AgentState)
+             .add_node("plan", plan)
+             .set_entry_point("plan")
+             .add_node("execute", execute)
+             .add_node("replan", update_plan)
+             .add_node("critic", critique)
+             .add_edge("plan", "execute")
+             .add_edge("execute", "replan")
+             .add_conditional_edges("replan", should_continue, {"execute": "execute", "end": "critic"})
+             .add_edge("critic", END)
+             )
 
 async def run_query(query: str) -> str:
     graph = build_graph().compile()
@@ -181,3 +171,4 @@ if __name__ == "__main__":
     q = sys.argv[1] if len(sys.argv) > 1 else "What is the last word before the second chorus of the King of Pop's fifth single from his sixth studio album?"
     answer = asyncio.run(run_query(q))
     print("Final:", answer)
+
