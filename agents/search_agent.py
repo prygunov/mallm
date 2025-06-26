@@ -7,6 +7,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import StructuredTool
 from tools.google_search import google_search_tool
 from tools.open_url import open_url_tool
+from tools.ltm_tool import ltm_search_tool
+from shared_memory import shared_memory
 
 load_dotenv()
 
@@ -15,7 +17,7 @@ if os.getenv("OPENAI_API_KEY"):
 else:
     agent_llm = None
 
-TOOLS = [google_search_tool, open_url_tool]
+TOOLS = [google_search_tool, open_url_tool, ltm_search_tool]
 TOOLS = [t for t in TOOLS if t]
 
 if agent_llm:
@@ -33,8 +35,12 @@ else:
 async def run_search(task: str) -> str:
     if not _executor:
         raise RuntimeError("LLM is not configured")
-    result = await _executor.ainvoke({"input": task})
-    return result.get("output", "")
+    context = shared_memory.get_context()
+    agent_input = f"Context:\n{context}\n\nTask: {task}" if context else task
+    result = await _executor.ainvoke({"input": agent_input})
+    output = result.get("output", "")
+    shared_memory.add(f"Search: {task}\n{output}")
+    return output
 
 search_agent_tool = StructuredTool.from_function(
     name="use_search_agent",

@@ -9,8 +9,11 @@ from langchain.agents import create_react_agent, AgentExecutor
 from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import StructuredTool
 from tools.ask_human import ask_human_tool
+from tools.ltm_tool import ltm_search_tool
 from agents.calculator_agent import calculator_agent_tool
 from agents.search_agent import search_agent_tool
+from agents.reasoner_agent import reasoner_agent_tool
+from shared_memory import shared_memory
 
 load_dotenv()
 
@@ -22,7 +25,13 @@ else:
 
 MAX_STEPS = 20
 
-AVAILABLE_TOOLS = [calculator_agent_tool, search_agent_tool, ask_human_tool]
+AVAILABLE_TOOLS = [
+    calculator_agent_tool,
+    search_agent_tool,
+    reasoner_agent_tool,
+    ltm_search_tool,
+    ask_human_tool,
+]
 AVAILABLE_TOOLS = [t for t in AVAILABLE_TOOLS if t]
 
 if agent_llm:
@@ -64,6 +73,7 @@ def replan(query: str, completed: List[Tuple[str, str]]) -> List[str]:
 async def run(query: str) -> str:
     if not _executor:
         raise RuntimeError("LLM is not configured")
+    shared_memory.add(f"User query: {query}")
     tasks = initial_plan(query)
     completed: List[Tuple[str, str]] = []
     step = 0
@@ -71,10 +81,16 @@ async def run(query: str) -> str:
         step += 1
         current_task = tasks.pop(0)
         facts = "\n".join(f"{k} - {v}" for k, v in completed)
-        agent_input = f"Current task: {current_task}\nFacts: {facts}"
+        context = shared_memory.get_context()
+        agent_input = (
+            f"Context:\n{context}\n\nCurrent task: {current_task}\nFacts: {facts}"
+            if context
+            else f"Current task: {current_task}\nFacts: {facts}"
+        )
         result = await _executor.ainvoke({"input": agent_input})
         output = result.get("output", "")
         completed.append((current_task, output))
+        shared_memory.add(f"{current_task} -> {output}")
         tasks = replan(query, completed)
         if tasks and len(tasks) == 1 and tasks[0] == "Nothing.":
             break
