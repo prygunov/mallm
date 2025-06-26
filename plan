@@ -1,0 +1,5 @@
+1. Integrate CrewAI tool format alongside existing LangChain tools.
+2. Update each tool to export a `crew_*` version when CrewAI is installed.
+3. Keep the original `StructuredTool` exports for backward compatibility.
+4. Modify the example to use the new CrewAI tools.
+

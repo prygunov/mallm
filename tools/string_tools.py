@@ -15,6 +15,11 @@ try:
 except ImportError:  # ≤ 0.0.350
     from langchain.tools import StructuredTool  # type: ignore
 
+try:
+    from crewai.tools.structured_tool import CrewStructuredTool
+except ImportError:
+    CrewStructuredTool = None
+
 
 # ───────────────────────── helpers ──────────────────────────
 def _safe_find(text: str, needle: str) -> int:
@@ -53,6 +58,15 @@ before_tool = StructuredTool.from_function(
     ),
     args_schema=BeforeArgs,
 )
+if CrewStructuredTool:
+    crew_before_tool = CrewStructuredTool.from_function(
+        get_text_before,
+        name="text_before_delimiter",
+        description="Вернёт всё, что находится до первой встречи delimiter. Полезно, когда надо обрезать хвост URI, команды, списка и т.д.",
+        args_schema=BeforeArgs,
+    )
+else:
+    crew_before_tool = None
 
 # ──────────────────────── 2. After delimiter ──────────────────────────
 class AfterArgs(BaseModel):
@@ -80,6 +94,15 @@ after_tool = StructuredTool.from_function(
     description="Быстро получить «хвост» строки после delimiter.",
     args_schema=AfterArgs,
 )
+if CrewStructuredTool:
+    crew_after_tool = CrewStructuredTool.from_function(
+        get_text_after,
+        name="text_after_delimiter",
+        description="Быстро получить «хвост» строки после delimiter.",
+        args_schema=AfterArgs,
+    )
+else:
+    crew_after_tool = None
 
 # ──────────────────────── 3. Between markers ──────────────────────────
 class BetweenArgs(BaseModel):
@@ -113,6 +136,15 @@ between_tool = StructuredTool.from_function(
     description="Выцепить фрагмент между start_marker и end_marker.",
     args_schema=BetweenArgs,
 )
+if CrewStructuredTool:
+    crew_between_tool = CrewStructuredTool.from_function(
+        get_text_between,
+        name="text_between_markers",
+        description="Выцепить фрагмент между start_marker и end_marker.",
+        args_schema=BetweenArgs,
+    )
+else:
+    crew_between_tool = None
 
 # ──────────────────────── 4. Split & pick ─────────────────────────────
 class SplitPickArgs(BaseModel):
@@ -139,6 +171,15 @@ split_pick_tool = StructuredTool.from_function(
     description="text.split(delimiter)[index] c защитой от IndexError.",
     args_schema=SplitPickArgs,
 )
+if CrewStructuredTool:
+    crew_split_pick_tool = CrewStructuredTool.from_function(
+        split_and_pick,
+        name="split_and_pick",
+        description="text.split(delimiter)[index] c защитой от IndexError.",
+        args_schema=SplitPickArgs,
+    )
+else:
+    crew_split_pick_tool = None
 
 # ──────────────────────── 5. Regex extract ────────────────────────────
 import re  # noqa: E402
@@ -172,6 +213,15 @@ regex_tool = StructuredTool.from_function(
     args_schema=RegexArgs,
     # handle_tool_error=True  # если хотите возвращать текст ошибки вместо exception
 )
+if CrewStructuredTool:
+    crew_regex_tool = CrewStructuredTool.from_function(
+        regex_extract,
+        name="regex_extract",
+        description="Извлечь фрагмент по регулярке. Поддерживает группы.",
+        args_schema=RegexArgs,
+    )
+else:
+    crew_regex_tool = None
 
 # ──────────────────────── Registry ────────────────────────────────────
 STRING_TOOLS = [
@@ -181,7 +231,18 @@ STRING_TOOLS = [
     split_pick_tool,
     regex_tool,
 ]
+if CrewStructuredTool:
+    CREW_STRING_TOOLS = [
+        crew_before_tool,
+        crew_after_tool,
+        crew_between_tool,
+        crew_split_pick_tool,
+        crew_regex_tool,
+    ]
+else:
+    CREW_STRING_TOOLS = []
 
 # Convenience export: agent-friendly flat list
-__all__: List[str] = ["STRING_TOOLS"]
+__all__: List[str] = ["STRING_TOOLS", "CREW_STRING_TOOLS"]
+
 
