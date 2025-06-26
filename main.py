@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 
 from agents.coordinator_agent import run as run_coordinator
+from agents.critic_agent import run_critic
 
 # Example query. Replace or pass via CLI as needed.
 QUERY = (
@@ -10,8 +11,9 @@ QUERY = (
 
 
 def main(query: str = QUERY) -> None:
-    result = asyncio.run(run_coordinator(query))
-    print(result)
+    coord_result = asyncio.run(run_coordinator(query))
+    final_result = asyncio.run(run_critic(coord_result))
+    print(final_result)
 
 
 if __name__ == "__main__":
