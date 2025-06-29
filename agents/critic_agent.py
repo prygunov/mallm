@@ -24,6 +24,4 @@ async def run_critic(answer: str) -> str:
     message = CRITIC_SYSTEM_PROMPT + "\n\nAnswer:\n" + answer
     result = await critic_llm.ainvoke(message)
     verdict = result.content.strip()
-    if verdict.upper() == "APPROVED":
-        return answer
-    return f"Critique: {verdict}"
+    return verdict.upper()

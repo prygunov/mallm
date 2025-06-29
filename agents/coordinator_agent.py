@@ -75,6 +75,8 @@ async def run(query: str) -> str:
         raise RuntimeError("LLM is not configured")
     shared_memory.add(f"User query: {query}")
     tasks = initial_plan(query)
+    print("Planned tasks:")
+    print(tasks)
     completed: List[Tuple[str, str]] = []
     step = 0
     while tasks and step < MAX_STEPS:

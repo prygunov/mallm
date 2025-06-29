@@ -33,6 +33,7 @@ else:
     _executor = None
 
 async def run_reasoner(task: str) -> str:
+    """Run the reasoner agent with the provided task. It draws conclusions based on the shared context."""
     if not _executor:
         raise RuntimeError("LLM is not configured")
     context = shared_memory.get_context()
