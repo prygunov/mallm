@@ -6,6 +6,7 @@ from langchain.agents import create_react_agent, AgentExecutor
 from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import StructuredTool
 from tools.google_search import google_search_tool
+from tools.duck_search import ddg_search_tool
 from tools.open_url import open_url_tool
 from tools.ltm_tool import ltm_search_tool
 from shared_memory import shared_memory
@@ -26,13 +27,14 @@ if agent_llm:
     _executor = AgentExecutor(
         agent=_agent,
         tools=TOOLS,
-        verbose=False,
+        verbose=True,
         handle_parsing_errors=True,
     )
 else:
     _executor = None
 
 async def run_search(task: str) -> str:
+    """Run the search agent with the provided task. It performs a Google search or opens a URLs."""
     if not _executor:
         raise RuntimeError("LLM is not configured")
     context = shared_memory.get_context()

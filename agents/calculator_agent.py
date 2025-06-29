@@ -32,6 +32,7 @@ else:
     _executor = None
 
 async def run_calculator(task: str) -> str:
+    """Run the calculator agent with the provided task. It evaluates a mathematical expressions."""
     if not _executor:
         raise RuntimeError("LLM is not configured")
     context = shared_memory.get_context()

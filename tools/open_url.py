@@ -12,9 +12,7 @@ async def open_url(url: str) -> str:
             resp.raise_for_status()
     except httpx.HTTPError:
         # Retry without SSL verification on certificate errors
-        async with httpx.AsyncClient(follow_redirects=True, timeout=15.0, verify=False) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
+        return " forbidden, try another url"
     html = resp.text
     doc = Document(html)
     main_html = doc.summary()
